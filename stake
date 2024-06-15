@@ -19,11 +19,10 @@
         if (button) {
             if (!button.disabled) {
                 console.log('Button found and enabled:', button);
-                button.focus(); // Focus on the button
-                button.click(); // Attempt to click the button
+                button.focus(); 
+                button.click(); 
                 console.log('Button clicked!');
 
-                // Create a mouse event and dispatch it for a more robust click
                 const event = new MouseEvent('click', {
                     bubbles: true,
                     cancelable: true,
@@ -32,7 +31,6 @@
                 button.dispatchEvent(event);
                 console.log('Dispatched mouse event for button click!');
 
-                // Schedule the next click
                 const nextClaimDateTime = new Date();
                 nextClaimDateTime.setHours(nextClaimDateTime.getHours() + 24 + Math.random());
                 await GM.setValue('nextClaimDateTime', nextClaimDateTime.toISOString());
@@ -67,6 +65,5 @@
         }
     }
 
-    // Initial delay before checking the next claim time
     setTimeout(init, 10000);
 })();
