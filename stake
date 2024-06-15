@@ -37,11 +37,11 @@
                 console.log('Next claim scheduled at:', nextClaimDateTime);
             } else {
                 console.log('Button is disabled, retrying in 1 minute...');
-                setTimeout(clickButton, 60000); // Retry every 1 minute until the button is enabled
+                setTimeout(clickButton, 60000); 
             }
         } else {
             console.log('Button not found, retrying...');
-            setTimeout(clickButton, 5000); // Retry every 5 seconds until the button is found
+            setTimeout(clickButton, 5000); 
         }
     }
 
