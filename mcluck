@@ -1,0 +1,172 @@
+// ==UserScript==
+// @name         McLuck Daily
+// @namespace    http://tampermonkey.net/
+// @version      0.8
+// @description  Automatically claim daily bonus on McLuck.com once every 24-25 hours
+// @author       ashtonlaszlo
+// @match        https://www.mcluck.com/home
+// @match        https://www.mcluck.com/login
+// @match        https://www.mcluck.com/gold-coins
+// @grant        GM.setValue
+// @grant        GM.getValue
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    console.log('Tampermonkey script for McLuck is running.');
+
+    async function clickLoginButtonHome() {
+        const loginButton = document.querySelector('#root-layout > header > div > div > div.styles_buttonsContainer__VXppt.Header_buttons__5_iFQ > a.mt-button-base-root.mt-button-outlined.styles_root__rijy_.styles_loginLink__QnUXk.styles_linkOutlined__QFrz_');
+        if (loginButton) {
+            console.log('Login button found on home page:', loginButton);
+            loginButton.click();
+            console.log('Login button clicked. Waiting to navigate to login page...');
+
+            setTimeout(handleLoginPage, 15000);
+        } else {
+            console.log('Login button not found on home page, jumping to SUBSTEP 3...');
+            clickGetCoinsButton();
+        }
+    }
+
+    async function handleLoginPage() {
+        if (window.location.href === 'https://www.mcluck.com/login') {
+            console.log('On login page.');
+            clickPasswordField();
+        } else {
+            console.log('Not on login page yet, retrying...');
+            setTimeout(handleLoginPage, 5000); 
+        }
+    }
+
+    async function clickPasswordField() {
+        const passwordField = document.querySelector('#password');
+        if (passwordField) {
+            console.log('Password field found:', passwordField);
+            passwordField.focus();
+            console.log('Password field focused. Attempting to click login button...');
+            clickLoginSubmitButton();
+        } else {
+            console.log('Password field not found, retrying...');
+            setTimeout(clickPasswordField, 5000); 
+        }
+    }
+
+    async function clickLoginSubmitButton() {
+        const loginSubmitButton = document.querySelector('#root-layout > div > div > form > button');
+        if (loginSubmitButton) {
+            if (!loginSubmitButton.disabled) {
+                console.log('Login submit button found and enabled:', loginSubmitButton);
+                loginSubmitButton.click();
+                console.log('Login submit button clicked!');
+
+                setTimeout(init, 15000);
+            } else {
+                console.log('Login submit button is disabled, retrying in 15 seconds...');
+                setTimeout(clickLoginSubmitButton, 15000); 
+            }
+        } else {
+            console.log('Login submit button not found, retrying...');
+            setTimeout(clickLoginSubmitButton, 5000); 
+        }
+    }
+
+    async function clickGetCoinsButton() {
+        const getCoinsButton = document.querySelector('#root-layout > div.Layout_menuDesktop__NgAZs > div:nth-child(2) > div.styles_balanceBlock__1o82g.styles_links__R3Pzu > div.styles_shopBtns__KO_0Z > button.mt-button-base-root.mt-button-contained.styles_root__YiphY.styles_shopLink__wlgjD.styles_pulsate__qHBc2');
+        if (getCoinsButton) {
+            console.log('Get Coins button found:', getCoinsButton);
+            getCoinsButton.click();
+            console.log('Get Coins button clicked! Waiting to navigate to gold coins page...');
+
+            setTimeout(handleGoldCoinsPage, 15000);
+        } else {
+            console.log('Get Coins button not found, retrying...');
+            setTimeout(clickGetCoinsButton, 5000); 
+        }
+    }
+
+    async function handleGoldCoinsPage() {
+        if (window.location.href === 'https://www.mcluck.com/gold-coins') {
+            console.log('On gold coins page.');
+            clickClaimNowButton();
+        } else {
+            console.log('Not on gold coins page yet, retrying...');
+            setTimeout(handleGoldCoinsPage, 5000); 
+        }
+    }
+
+    async function clickClaimNowButton() {
+        const claimNowButton = document.querySelector('#root-layout > main > div > section > div > div.styles_scrollWrap__XKX0Y.styles_arrows__UOULJ > div > div.styles_root__6ew9X > button');
+        if (claimNowButton) {
+            console.log('Claim Now button found:', claimNowButton);
+            claimNowButton.click();
+            console.log('Claim Now button clicked! Waiting for popup...');
+
+            setTimeout(clickClaimMyRewardsButton, 5000);
+        } else {
+            console.log('Claim Now button not found, retrying...');
+            setTimeout(clickClaimNowButton, 5000); 
+        }
+    }
+
+    async function clickClaimMyRewardsButton() {
+        const claimMyRewardsButton = document.querySelector('body > div.mt-modal-root > div:nth-child(3) > div > section > div.content > button');
+        if (claimMyRewardsButton) {
+            console.log('Claim My Rewards button found:', claimMyRewardsButton);
+            claimMyRewardsButton.click();
+            console.log('Claim My Rewards button clicked!');
+
+            const nextClaimDateTime = new Date();
+            nextClaimDateTime.setHours(nextClaimDateTime.getHours() + 24 + Math.random());
+            await GM.setValue('nextClaimDateTime', nextClaimDateTime.toISOString());
+            console.log('Next claim scheduled at:', nextClaimDateTime);
+
+        } else {
+            console.log('Claim My Rewards button not found, retrying...');
+            setTimeout(clickClaimMyRewardsButton, 5000); 
+        }
+    }
+
+    async function init() {
+        const nextClaimDateTimeString = await GM.getValue('nextClaimDateTime', null);
+        const now = new Date();
+
+        if (nextClaimDateTimeString) {
+            const nextClaimDateTime = new Date(nextClaimDateTimeString);
+            if (now >= nextClaimDateTime) {
+                console.log('It is time to claim the bonus.');
+                executeSteps();
+            } else {
+                const timeToNextClaim = nextClaimDateTime - now;
+                console.log('Next claim is scheduled at:', nextClaimDateTime, 'Waiting for', timeToNextClaim, 'ms');
+                setTimeout(init, timeToNextClaim);
+            }
+        } else {
+            console.log('No next claim scheduled. Executing steps now.');
+            executeSteps();
+        }
+    }
+
+    async function executeSteps() {
+        if (window.location.href === 'https://www.mcluck.com/home') {
+            const loginButton = document.querySelector('#root-layout > header > div > div > div.styles_buttonsContainer__VXppt.Header_buttons__5_iFQ > a.mt-button-base-root.mt-button-outlined.styles_root__rijy_.styles_loginLink__QnUXk.styles_linkOutlined__QFrz_');
+            if (loginButton) {
+                console.log('On home page. Waiting for 15 seconds before attempting to click the login button...');
+                setTimeout(clickLoginButtonHome, 15000); 
+            } else {
+                console.log('Login button not found on home page, jumping to SUBSTEP 3...');
+                clickGetCoinsButton();
+            }
+        } else if (window.location.href === 'https://www.mcluck.com/login') {
+            handleLoginPage();
+        } else if (window.location.href === 'https://www.mcluck.com/gold-coins') {
+            handleGoldCoinsPage();
+        } else {
+            console.log('Not on a recognized page, skipping to next functions...');
+            proceedToNextFunctions();
+        }
+    }
+
+    setTimeout(init, 10000);
+})();
