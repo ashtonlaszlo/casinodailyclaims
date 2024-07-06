@@ -1,0 +1,51 @@
+// ==UserScript==
+// @name         WowVegas Daily
+// @namespace    http://tampermonkey.net/
+// @version      1.0
+// @description  Automatically claim daily bonus on WowVegas
+// @author       ashtonlaszlo
+// @match        https://www.wowvegas.com/promotions/daily-coin-reward
+// @grant        GM.setValue
+// @grant        GM.getValue
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    console.log('Tampermonkey script to claim WowVegas daily bonus is running.');
+
+    async function clickClaimButton() {
+        const claimButton = document.querySelector('#__nuxt > div.dark\\:bg-zinc-900 > div.lg\\:pl-72.min-h-screen-ios.overflow-x-hidden.duration-200.lg\\:min-h-screen-ios > main > div > div > article.prose.max-w-none.py-2.text-start.dark\\:prose-invert.md\\:py-4 > button');
+        if (claimButton) {
+            console.log('Claim button found:', claimButton);
+            claimButton.click();
+            console.log('Claim button clicked.');
+            scheduleNextClaim();
+        } else {
+            console.log('Claim button not found, retrying...');
+            setTimeout(clickClaimButton, 5000);
+        }
+    }
+
+    async function scheduleNextClaim() {
+        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+        const nextClaimDateTime = Date.now() + ONE_DAY_MS + (Math.random() * 60 * 60 * 1000); 
+        await GM.setValue('nextClaimDateTime', nextClaimDateTime);
+        console.log('Next claim scheduled at:', new Date(nextClaimDateTime).toString());
+    }
+
+    async function init() {
+        const nextClaimDateTime = await GM.getValue('nextClaimDateTime', 0);
+        const currentTime = Date.now();
+
+        if (currentTime >= nextClaimDateTime) {
+            clickClaimButton();
+        } else {
+            const waitTime = nextClaimDateTime - currentTime;
+            console.log(`Next claim scheduled in ${waitTime / 1000 / 60 / 60} hours.`);
+            setTimeout(init, waitTime); 
+        }
+    }
+
+    setTimeout(init, 10000); 
+})();
