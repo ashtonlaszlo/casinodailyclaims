@@ -1,0 +1,104 @@
+// ==UserScript==
+// @name         FortuneCoins Daily
+// @namespace    http://tampermonkey.net/
+// @version      1.0
+// @description  Automatically claim daily bonus on FortuneCoins.com and keep the session alive to avoid being automatically logged out
+// @match        https://www.fortunecoins.com/lobby
+// @author       ashtonlaszlo
+// @grant        GM.xmlHttpRequest
+// @grant        GM.setValue
+// @grant        GM.getValue
+// @grant        window.focus
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    console.log('Tampermonkey script to keep FortuneCoins session alive and claim daily bonus is running.');
+
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+    function sendKeepAlive() {
+        console.log('Sending keep-alive request...');
+        GM.xmlHttpRequest({
+            method: 'GET',
+            url: 'https://www.fortunecoins.com/lobby',
+            onload: function(response) {
+                if (response.status === 200) {
+                    console.log('Keep-alive request successful.');
+                } else {
+                    console.error('Keep-alive request failed:', response.status);
+                }
+            },
+            onerror: function(response) {
+                console.error('Keep-alive request error:', response);
+            }
+        });
+    }
+
+    function startKeepAlive() {
+        sendKeepAlive(); 
+        setInterval(sendKeepAlive, 5 * 60 * 1000); 
+    }
+
+    function handleTabFocus() {
+        console.log('Tab regained focus, starting keep-alive...');
+        startKeepAlive();
+    }
+
+    startKeepAlive();
+
+    window.addEventListener('focus', handleTabFocus);
+
+    async function clickCollectButton() {
+        console.log('Attempting to find the Collect button...');
+        const collectButton = document.querySelector('body > div:nth-child(23) > div > div.modal.fade.show > div > div > div.modal-body > div:nth-child(1) > div.coinsRow > div:nth-child(1) > div > div.daily-bonus-buttons-wrapper > button.daily-bonus-collect-button.daily-bonus-buttons.loadingBtn.btn.btn-secondary');
+        if (collectButton) {
+            console.log('Collect button found:', collectButton);
+            collectButton.click();
+            console.log('Collect button clicked.');
+            scheduleNextClaim();
+        } else {
+            console.log('Collect button not found, retrying...');
+            setTimeout(clickCollectButton, 5000); 
+        }
+    }
+
+    async function clickFreeCoinsButton() {
+        const freeCoinsButton = document.querySelector('#__next > div.headerAuth > div > nav > div.headerButtons > div.coin-store-button > button');
+        if (freeCoinsButton) {
+            console.log('Free Coins button found:', freeCoinsButton);
+            freeCoinsButton.click();
+            console.log('Free Coins button clicked.');
+            setTimeout(function() {
+                console.log('Waiting for popup to appear...');
+                clickCollectButton();
+            }, 10000); 
+        } else {
+            console.log('Free Coins button not found, retrying...');
+            setTimeout(clickFreeCoinsButton, 5000); 
+        }
+    }
+
+    async function init() {
+        const nextClaimDateTime = await GM.getValue('nextClaimDateTime', 0);
+        const currentTime = Date.now();
+
+        if (currentTime >= nextClaimDateTime) {
+            console.log('Attempting to click the Free Coins button...');
+            setTimeout(clickFreeCoinsButton, 10000);
+        } else {
+            const waitTime = nextClaimDateTime - currentTime;
+            console.log(`Next claim scheduled in ${waitTime / 1000 / 60 / 60} hours.`);
+            setTimeout(init, waitTime);
+        }
+    }
+
+    async function scheduleNextClaim() {
+        const nextClaimDateTime = Date.now() + ONE_DAY_MS + (Math.random() * 60 * 60 * 1000); 
+        await GM.setValue('nextClaimDateTime', nextClaimDateTime);
+        console.log('Next claim scheduled at:', new Date(nextClaimDateTime).toString());
+    }
+
+    setTimeout(init, 10000);
+})();
