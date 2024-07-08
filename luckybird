@@ -1,0 +1,89 @@
+// ==UserScript==
+// @name         LuckyBird Daily
+// @namespace    http://tampermonkey.net/
+// @version      1.3
+// @description  Automatically claim daily bonus on LuckyBird.io 
+// @author       ashtonlaszlo
+// @match        https://luckybird.io/*
+// @grant        GM.setValue
+// @grant        GM.getValue
+// @grant        window.focus
+// ==/UserScript==
+
+(function() {
+    'use strict';
+    console.log('Tampermonkey script to claim daily bonus on LuckyBird.io is running.');
+
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function clickBuyButton() {
+        const buyButton = document.querySelector('#app > div > div:nth-child(1) > div > section > section > header > div > div > ul.wrap-center.d-flex.justify-center.align-center.flex-row > li:nth-child(2) > p');
+        if (buyButton) {
+            console.log('Buy button found:', buyButton);
+            await delay(3000);
+            buyButton.click();
+            console.log('Buy button clicked.');
+            await delay(3000);
+            clickDailyBonusButton();
+        } else {
+            console.log('Buy button not found, retrying...');
+            setTimeout(clickBuyButton, 5000);
+        }
+    }
+
+    async function clickDailyBonusButton() {
+        const dailyBonusButton = document.querySelector('body > section > div.commonAlert_wrap > div.commonAlert_main > div.buyRedeem_wrap.tw-flex.tw-justify-center.tw-flex-col > div.tw-flex.tw-flex-col.tw-px-4 > div > div > div > div:nth-child(5)');
+        if (dailyBonusButton) {
+            console.log('Daily Bonus button found:', dailyBonusButton);
+            await delay(3000);
+            dailyBonusButton.click();
+            console.log('Daily Bonus button clicked.');
+            await delay(3000);
+            clickClaimDailyBonusButton();
+        } else {
+            console.log('Daily Bonus button not found, retrying...');
+            setTimeout(clickDailyBonusButton, 5000);
+        }
+    }
+
+    async function clickClaimDailyBonusButton() {
+        const claimDailyBonusButton = document.querySelector('body > section > div.commonAlert_wrap > div.commonAlert_main > div.buyRedeem_wrap.tw-flex.tw-justify-center.tw-flex-col > div:nth-child(2) > div > div.tw-flex > button:nth-child(1)');
+        if (claimDailyBonusButton) {
+            console.log('Claim Daily Bonus button found:', claimDailyBonusButton);
+            await delay(3000);
+            claimDailyBonusButton.click();
+            console.log('Claim Daily Bonus button clicked.');
+            await delay(3000);
+            scheduleNextClaim();
+        } else {
+            console.log('Claim Daily Bonus button not found, retrying...');
+            setTimeout(clickClaimDailyBonusButton, 5000);
+        }
+    }
+
+    async function init() {
+        const nextClaimDateTime = await GM.getValue('nextClaimDateTime', 0);
+        const currentTime = Date.now();
+        if (currentTime >= nextClaimDateTime) {
+            console.log('It is time to claim the bonus. Starting the process...');
+            await delay(3000);
+            clickBuyButton();
+        } else {
+            const waitTime = nextClaimDateTime - currentTime;
+            console.log(`Next claim scheduled in ${waitTime / 1000 / 60 / 60} hours.`);
+            setTimeout(init, waitTime);
+        }
+    }
+
+    async function scheduleNextClaim() {
+        const nextClaimDateTime = Date.now() + ONE_DAY_MS + (Math.random() * 60 * 60 * 1000);
+        await GM.setValue('nextClaimDateTime', nextClaimDateTime);
+        console.log('Next claim scheduled at:', new Date(nextClaimDateTime).toString());
+    }
+
+    setTimeout(init, 10000);
+})();
