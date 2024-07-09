@@ -1,0 +1,74 @@
+// ==UserScript==
+// @name         Funrize Daily
+// @namespace    http://tampermonkey.net/
+// @version      1.0
+// @description  claim daily bonus on Funrize 
+// @author       ashtonlaszlo
+// @match        https://funrize.com/*
+// @grant        GM.setValue
+// @grant        GM.getValue
+// @grant        window.focus
+// ==/UserScript==
+
+(function() {
+    'use strict';
+    console.log('Tampermonkey script to claim daily bonus on Funrize is running.');
+
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function clickFunrizeWheelButton() {
+        const funrizeWheelButton = document.querySelector('#__nuxt > div > div > main > aside > div.wheel-banner > div.wrapper');
+        if (funrizeWheelButton) {
+            console.log('Funrize Wheel button found:', funrizeWheelButton);
+            await delay(3000);
+            funrizeWheelButton.click();
+            console.log('Funrize Wheel button clicked.');
+            await delay(3000);
+            clickSpinAndWinButton();
+        } else {
+            console.log('Funrize Wheel button not found, retrying...');
+            setTimeout(clickFunrizeWheelButton, 5000);
+        }
+    }
+
+    async function clickSpinAndWinButton() {
+        const spinAndWinButton = document.querySelector('#ModalWheelDaily > div > div > div.content > div > button');
+        if (spinAndWinButton) {
+            console.log('Spin & Win button found:', spinAndWinButton);
+            await delay(3000);
+            spinAndWinButton.click();
+            console.log('Spin & Win button clicked.');
+            await delay(3000);
+            scheduleNextClaim();
+        } else {
+            console.log('Spin & Win button not found, retrying...');
+            setTimeout(clickSpinAndWinButton, 5000);
+        }
+    }
+
+    async function init() {
+        const nextClaimDateTime = await GM.getValue('nextClaimDateTime', 0);
+        const currentTime = Date.now();
+        if (currentTime >= nextClaimDateTime) {
+            console.log('It is time to claim the bonus. Starting the process...');
+            await delay(3000);
+            clickFunrizeWheelButton();
+        } else {
+            const waitTime = nextClaimDateTime - currentTime;
+            console.log(`Next claim scheduled in ${waitTime / 1000 / 60 / 60} hours.`);
+            setTimeout(init, waitTime);
+        }
+    }
+
+    async function scheduleNextClaim() {
+        const nextClaimDateTime = Date.now() + ONE_DAY_MS + (Math.random() * 60 * 60 * 1000); // 24 to 25 hours
+        await GM.setValue('nextClaimDateTime', nextClaimDateTime);
+        console.log('Next claim scheduled at:', new Date(nextClaimDateTime).toString());
+    }
+
+    setTimeout(init, 10000);
+})();
