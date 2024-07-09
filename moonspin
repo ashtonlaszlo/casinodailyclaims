@@ -1,0 +1,96 @@
+// ==UserScript==
+// @name         MoonSpin Daily
+// @namespace    http://tampermonkey.net/
+// @version      1.5
+// @description  claim all available bonuses on Moonspin
+// @author       ashtonlaszlo
+// @match        https://moonspin.us/*
+// @grant        GM.setValue
+// @grant        GM.getValue
+// @grant        window.focus
+// ==/UserScript==
+
+(function() {
+    'use strict';
+    console.log('Tampermonkey script to claim daily bonus on MoonSpin is running.');
+
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function onUrlChange(callback) {
+        let oldUrl = location.href;
+        const body = document.querySelector("body");
+        const observer = new MutationObserver(() => {
+            if (oldUrl !== location.href) {
+                oldUrl = location.href;
+                callback();
+            }
+        });
+        observer.observe(body, { childList: true, subtree: true });
+    }
+
+    async function clickBonusesButton() {
+        const bonusesButton = document.querySelector('#__next > div > header > div.chakra-stack.css-7casic > div > div > button:nth-child(1)');
+        if (bonusesButton) {
+            console.log('Bonuses button found:', bonusesButton);
+            await delay(3000);
+            bonusesButton.click();
+            console.log('Bonuses button clicked.');
+        } else {
+            console.log('Bonuses button not found, retrying...');
+            setTimeout(clickBonusesButton, 5000);
+        }
+    }
+
+    function getEnabledClaimButtons() {
+        return Array.from(document.querySelectorAll('button.chakra-button.css-1g1itvr'))
+            .filter(button => !button.disabled);
+    }
+
+    async function clickEnabledClaimButtons() {
+        const enabledButtons = getEnabledClaimButtons();
+        if (enabledButtons.length > 0) {
+            console.log(`Found ${enabledButtons.length} enabled Claim button(s). Clicking the first one...`);
+            await delay(3000);
+            enabledButtons[0].click();
+            console.log('Claim button clicked.');
+            await delay(3000);
+            clickEnabledClaimButtons(); 
+        } else {
+            console.log('No enabled Claim buttons found. Scheduling next claim...');
+            scheduleNextClaim();
+        }
+    }
+
+    async function init() {
+        const nextClaimDateTime = await GM.getValue('nextClaimDateTime', 0);
+        const currentTime = Date.now();
+        if (currentTime >= nextClaimDateTime) {
+            console.log('It is time to claim the bonus. Starting the process...');
+            await delay(3000);
+            clickBonusesButton();
+        } else {
+            const waitTime = nextClaimDateTime - currentTime;
+            console.log(`Next claim scheduled in ${waitTime / 1000 / 60 / 60} hours.`);
+            setTimeout(init, waitTime);
+        }
+    }
+
+    async function scheduleNextClaim() {
+        const nextClaimDateTime = Date.now() + ONE_DAY_MS + (Math.random() * 60 * 60 * 1000); // 24 to 25 hours
+        await GM.setValue('nextClaimDateTime', nextClaimDateTime);
+        console.log('Next claim scheduled at:', new Date(nextClaimDateTime).toString());
+    }
+
+    onUrlChange(() => {
+        if (location.href.includes("modal=wallet-dailyBonus")) {
+            console.log('Detected URL change to daily bonus modal. Starting the claim process...');
+            clickEnabledClaimButtons();
+        }
+    });
+
+    setTimeout(init, 10000);
+})();
