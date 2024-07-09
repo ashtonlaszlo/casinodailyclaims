@@ -1,0 +1,79 @@
+// ==UserScript==
+// @name         Sportzino Daily
+// @namespace    http://tampermonkey.net/
+// @version      1.2
+// @description  claim daily bonus on Sportzino.com 
+// @author       ashtonlaszlo
+// @match        https://sportzino.com/lobby
+// @grant        GM.setValue
+// @grant        GM.getValue
+// @grant        window.focus
+// ==/UserScript==
+
+(function() {
+    'use strict';
+    console.log('Tampermonkey script to claim daily bonus on Sportzino.com is running.');
+
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function clickFreeCoinsButton() {
+        const freeCoinsButton = document.querySelector('#__next > div > nav > div > div.header-auth-section-buttons > div:nth-child(1) > button');
+        if (freeCoinsButton) {
+            console.log('Free Coins button found:', freeCoinsButton);
+            await delay(3000);
+            freeCoinsButton.click();
+            console.log('Free Coins button clicked.');
+            await delay(3000);
+            clickCollectButton();
+        } else {
+            console.log('Free Coins button not found, retrying...');
+            setTimeout(clickFreeCoinsButton, 5000);
+        }
+    }
+
+    async function clickCollectButton() {
+        const collectButton = document.querySelector('body > div:nth-child(23) > div > div.modal.fade.show > div > div > div.modal-body > div:nth-child(1) > div.coins-row-width-wrapper > div > div:nth-child(1) > div > div.daily-bonus-buttons-wrapper > button.sp_daily-bonus-coins-store.daily-bonus-collect-button.daily-bonus-buttons.loadingBtn.btn.btn-secondary');
+        if (collectButton) {
+            console.log('Collect button found:', collectButton);
+            await delay(3000);
+            if (!collectButton.disabled) {
+                collectButton.click();
+                console.log('Collect button clicked.');
+                await delay(3000);
+                scheduleNextClaim();
+            } else {
+                console.log('Collect button is disabled, retrying...');
+                setTimeout(clickCollectButton, 5000);
+            }
+        } else {
+            console.log('Collect button not found, retrying...');
+            setTimeout(clickCollectButton, 5000);
+        }
+    }
+
+    async function init() {
+        const nextClaimDateTime = await GM.getValue('nextClaimDateTime', 0);
+        const currentTime = Date.now();
+        if (currentTime >= nextClaimDateTime) {
+            console.log('It is time to claim the bonus. Starting the process...');
+            await delay(3000);
+            clickFreeCoinsButton();
+        } else {
+            const waitTime = nextClaimDateTime - currentTime;
+            console.log(`Next claim scheduled in ${waitTime / 1000 / 60 / 60} hours.`);
+            setTimeout(init, waitTime);
+        }
+    }
+
+    async function scheduleNextClaim() {
+        const nextClaimDateTime = Date.now() + ONE_DAY_MS + (Math.random() * 60 * 60 * 1000);
+        await GM.setValue('nextClaimDateTime', nextClaimDateTime);
+        console.log('Next claim scheduled at:', new Date(nextClaimDateTime).toString());
+    }
+
+    setTimeout(init, 10000);
+})();
