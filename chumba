@@ -1,0 +1,89 @@
+// ==UserScript==
+// @name         Chumba Daily
+// @namespace    http://tampermonkey.net/
+// @version      1.1
+// @description  claim daily bonus on Chumba
+// @author       ashtonlaszlo
+// @match        https://lobby.chumbacasino.com/
+// @grant        GM.setValue
+// @grant        GM.getValue
+// @grant        window.focus
+// ==/UserScript==
+
+(function() {
+    'use strict';
+    console.log('Tampermonkey script to claim daily bonus on ChumbaCasino is running.');
+
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function clickGetCoinsButton() {
+        const getCoinsButton = document.querySelector('#hud__primary-buy-btn');
+        if (getCoinsButton) {
+            console.log('Get Coins button found:', getCoinsButton);
+            await delay(3000);
+            getCoinsButton.click();
+            console.log('Get Coins button clicked.');
+            await delay(3000);
+            clickDailyBonusButton();
+        } else {
+            console.log('Get Coins button not found, retrying...');
+            setTimeout(clickGetCoinsButton, 5000);
+        }
+    }
+
+    async function clickDailyBonusButton() {
+        const dailyBonusButton = document.querySelector('#store_tab_daily_bonus > label');
+        if (dailyBonusButton) {
+            console.log('Daily Bonus button found:', dailyBonusButton);
+            await delay(3000);
+            dailyBonusButton.click();
+            console.log('Daily Bonus button clicked.');
+            await delay(3000);
+            clickClaimButton();
+        } else {
+            console.log('Daily Bonus button not found, retrying...');
+            setTimeout(clickDailyBonusButton, 5000);
+        }
+    }
+
+    async function clickClaimButton() {
+        const claimButton = document.querySelector('#streak-daily-bonus__claim-btn');
+        if (claimButton) {
+            console.log('Claim button found:', claimButton);
+            await delay(3000);
+            claimButton.click();
+            console.log('Claim button clicked.');
+            await delay(3000);
+            scheduleNextClaim();
+        } else {
+            console.log('Claim button not found, retrying...');
+            setTimeout(clickClaimButton, 5000);
+        }
+    }
+
+    async function init() {
+        const nextClaimDateTime = await GM.getValue('nextClaimDateTime', 0);
+        const currentTime = Date.now();
+        if (currentTime >= nextClaimDateTime) {
+            console.log('It is time to claim the bonus. Starting the process...');
+            await delay(3000);
+            clickGetCoinsButton();
+        } else {
+            const waitTime = nextClaimDateTime - currentTime;
+            console.log(`Next claim scheduled in ${waitTime / 1000 / 60 / 60} hours.`);
+            setTimeout(init, waitTime);
+        }
+    }
+
+    async function scheduleNextClaim() {
+        const nextClaimDateTime = Date.now() + ONE_DAY_MS + (Math.random() * 60 * 60 * 1000); // 24 to 25 hours
+        await GM.setValue('nextClaimDateTime', nextClaimDateTime);
+        console.log('Next claim scheduled at:', new Date(nextClaimDateTime).toString());
+    }
+
+    setTimeout(init, 10000);
+})();
