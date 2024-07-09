@@ -1,0 +1,74 @@
+// ==UserScript==
+// @name         Scratchful Daily
+// @namespace    http://tampermonkey.net/
+// @version      1.2
+// @description  Automatically claim daily bonus on Scratchful and handle popup windows
+// @author       ashtonlaszlo
+// @match        https://www.scratchful.com/gold-coins
+// @grant        GM.setValue
+// @grant        GM.getValue
+// @grant        window.focus
+// ==/UserScript==
+
+(function() {
+    'use strict';
+    console.log('Tampermonkey script to claim daily bonus on Scratchful is running.');
+
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function clickClaimNowButton() {
+        const claimNowButton = document.querySelector('#root-layout > main > div > section > div > div.styles_scrollWrap__XKX0Y.styles_arrows__UOULJ > div > div.DailyReward_root__MYwpp > button');
+        if (claimNowButton) {
+            console.log('Claim Now button found:', claimNowButton);
+            await delay(3000);
+            claimNowButton.click();
+            console.log('Claim Now button clicked.');
+            await delay(3000);
+            clickClaimMyRewardsButton();
+        } else {
+            console.log('Claim Now button not found, retrying...');
+            setTimeout(clickClaimNowButton, 5000);
+        }
+    }
+
+    async function clickClaimMyRewardsButton() {
+        const claimMyRewardsButton = document.querySelector('body > div.mt-modal-root > div:nth-child(3) > div > div > div.content > button');
+        if (claimMyRewardsButton) {
+            console.log('Claim My Rewards button found:', claimMyRewardsButton);
+            await delay(3000);
+            claimMyRewardsButton.click();
+            console.log('Claim My Rewards button clicked.');
+            await delay(3000);
+            scheduleNextClaim();
+        } else {
+            console.log('Claim My Rewards button not found, retrying...');
+            setTimeout(clickClaimMyRewardsButton, 5000);
+        }
+    }
+
+    async function init() {
+        const nextClaimDateTime = await GM.getValue('nextClaimDateTime', 0);
+        const currentTime = Date.now();
+        if (currentTime >= nextClaimDateTime) {
+            console.log('It is time to claim the bonus. Starting the process...');
+            await delay(3000);
+            clickClaimNowButton();
+        } else {
+            const waitTime = nextClaimDateTime - currentTime;
+            console.log(`Next claim scheduled in ${waitTime / 1000 / 60 / 60} hours.`);
+            setTimeout(init, waitTime);
+        }
+    }
+
+    async function scheduleNextClaim() {
+        const nextClaimDateTime = Date.now() + ONE_DAY_MS + (Math.random() * 60 * 60 * 1000); // 24 to 25 hours
+        await GM.setValue('nextClaimDateTime', nextClaimDateTime);
+        console.log('Next claim scheduled at:', new Date(nextClaimDateTime).toString());
+    }
+
+    setTimeout(init, 10000);
+})();
